@@ -1,11 +1,12 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
+from PIL import Image, ImageTk
 
 class TransportationProblemSolver:
     def __init__(self, root):
         self.root = root
         self.root.title("Transportation Problem Solver")
-        self.root.geometry("800x600")  # Set larger screen size
+        self.root.geometry("950x700")  # Set larger screen size
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(expand=1, fill="both")
 
@@ -26,10 +27,37 @@ class TransportationProblemSolver:
         self.steps_inner_frame = tk.Frame(self.steps_canvas)
         self.steps_canvas.create_window((0, 0), window=self.steps_inner_frame, anchor="nw")
 
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(expand=1, fill="both")
+
         self.algorithm_frame = tk.Frame(self.notebook)
         self.notebook.add(self.algorithm_frame, text='Algorithm')
+
         self.algorithm_text = tk.Text(self.algorithm_frame, wrap=tk.WORD)
-        self.algorithm_text.pack(expand=1, fill="both")
+        self.algorithm_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.flowchart_frame = tk.Frame(self.notebook)
+        self.notebook.add(self.flowchart_frame, text='Flowchart')
+
+        self.flowchart_canvas = tk.Canvas(self.flowchart_frame)
+        self.flowchart_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.flowchart_scrollbar = ttk.Scrollbar(self.flowchart_frame, orient=tk.VERTICAL,
+                                                 command=self.flowchart_canvas.yview)
+        self.flowchart_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.flowchart_canvas.configure(yscrollcommand=self.flowchart_scrollbar.set)
+        self.flowchart_canvas.bind('<Configure>', lambda e: self.flowchart_canvas.configure(
+            scrollregion=self.flowchart_canvas.bbox("all")))
+
+        self.flowchart_inner_frame = tk.Frame(self.flowchart_canvas)
+        self.flowchart_canvas.create_window((0, 0), window=self.flowchart_inner_frame, anchor="nw")
+
+        self.flowchart_images = {
+            "NorthWest Method": "nw.png",
+            "Least Cost Method": "lc.png",
+            "Vogel's Approximation Method": "vam.png"
+        }
 
         self.create_widgets()
 
@@ -130,27 +158,30 @@ class TransportationProblemSolver:
         self.reset_btn.grid(row=self.num_rows + 5, columnspan=self.num_columns + 2, pady=10)
 
     def display_algorithm(self, method):
+        # Display algorithm description based on selected method
         self.algorithm_text.config(state=tk.NORMAL)
         self.algorithm_text.delete('1.0', tk.END)
 
         if method == "NorthWest Method":
-            algorithm = (
+            algorithm_description = (
                 "NorthWest Method Algorithm:\n\n"
                 "1. Start with the cell in the top-left corner (north-west corner) of the cost matrix.\n"
                 "2. Allocate as much as possible to the selected cell and adjust the supply and demand.\n"
                 "3. Move to the next cell to the right if the current column's demand is met, or move down if the current row's supply is exhausted.\n"
                 "4. Repeat steps 2-3 until all supply and demand are met."
             )
+            flowchart_image_path = self.flowchart_images.get("NorthWest Method", "")
         elif method == "Least Cost Method":
-            algorithm = (
+            algorithm_description = (
                 "Least Cost Method Algorithm:\n\n"
                 "1. Identify the cell with the lowest cost in the cost matrix.\n"
                 "2. Allocate as much as possible to the selected cell and adjust the supply and demand.\n"
                 "3. Cross out the row or column that has been satisfied.\n"
                 "4. Repeat steps 1-3 until all supply and demand are met."
             )
+            flowchart_image_path = self.flowchart_images.get("Least Cost Method", "")
         elif method == "Vogel's Approximation Method":
-            algorithm = (
+            algorithm_description = (
                 "Vogel's Approximation Method Algorithm:\n\n"
                 "1. For each row and column, calculate the penalty cost (difference between the two lowest costs).\n"
                 "2. Identify the row or column with the highest penalty cost.\n"
@@ -158,9 +189,40 @@ class TransportationProblemSolver:
                 "4. Cross out the row or column that has been satisfied and recalculate penalties.\n"
                 "5. Repeat steps 1-4 until all supply and demand are met."
             )
+            flowchart_image_path = self.flowchart_images.get("Vogel's Approximation Method", "")
+        else:
+            algorithm_description = (
+                "Select an algorithm to view its description and flowchart."
+            )
+            flowchart_image_path = ""
 
-        self.algorithm_text.insert(tk.END, algorithm)
+        self.algorithm_text.insert(tk.END, algorithm_description)
         self.algorithm_text.config(state=tk.DISABLED)
+
+        self.load_flowchart(flowchart_image_path)
+
+    def load_flowchart(self, image_path):
+        # Load and display flowchart image in the flowchart tab
+        try:
+            if image_path:
+                flowchart_image = Image.open(image_path)
+                resized_image = flowchart_image.resize((self.root.winfo_width(), flowchart_image.height), Image.LANCZOS)
+                self.flowchart_img = ImageTk.PhotoImage(resized_image)
+
+                # Clear previous widgets in flowchart_inner_frame
+                for widget in self.flowchart_inner_frame.winfo_children():
+                    widget.destroy()
+
+                self.flowchart_label = tk.Label(self.flowchart_inner_frame, image=self.flowchart_img)
+                self.flowchart_label.image = self.flowchart_img
+                self.flowchart_label.pack(expand=True, anchor=tk.CENTER)  # Center align the label
+
+            else:
+                # If no image path provided, clear the flowchart frame
+                for widget in self.flowchart_inner_frame.winfo_children():
+                    widget.destroy()
+        except Exception as e:
+            messagebox.showerror("Error", f"Unable to load image: {e}")
 
     def output(self, supply, demand, cost_matrix, method, allocation):
         step_frame = tk.Frame(self.steps_inner_frame)
@@ -372,9 +434,32 @@ class TransportationProblemSolver:
         self.steps_inner_frame = tk.Frame(self.steps_canvas)
         self.steps_canvas.create_window((0, 0), window=self.steps_inner_frame, anchor="nw")
         self.steps_canvas.configure(scrollregion=self.steps_canvas.bbox("all"))
+        self.algorithm_text.config(state=tk.NORMAL)
+        self.algorithm_text.delete('1.0', tk.END)
+        self.algorithm_text.config(state=tk.DISABLED)
+
+        # Reset the flowchart tab
+        self.clear_flowchart()
+
+    def clear_flowchart(self):
+        # Clear the flowchart tab
+        try:
+            # Clear the flowchart canvas
+            self.flowchart_canvas.delete(tk.ALL)
+
+            # Reset the inner frame and scrollbar
+            self.flowchart_inner_frame = tk.Frame(self.flowchart_canvas)
+            self.flowchart_canvas.create_window((0, 0), window=self.flowchart_inner_frame, anchor="nw")
+
+            # Reset scroll region
+            self.flowchart_canvas.update_idletasks()  # Update widgets to get correct bbox
+            self.flowchart_canvas.configure(scrollregion=self.flowchart_canvas.bbox("all"))
+        except Exception as e:
+            messagebox.showerror("Error", f"Unable to reset flowchart: {e}")
 
 def main():
     root = tk.Tk()
+    root.resizable(False, False)
     app = TransportationProblemSolver(root)
     root.mainloop()
 
